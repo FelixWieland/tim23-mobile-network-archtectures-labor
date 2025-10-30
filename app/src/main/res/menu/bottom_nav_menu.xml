@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_exercise1"
+        android:icon="@drawable/ic_exercise1_black_24dp"
+        android:title="@string/title_exercise1" />
+
+    <item
+        android:id="@+id/navigation_exercise2"
+        android:icon="@drawable/ic_exercise2_black_24dp"
+        android:title="@string/title_exercise2" />
+
+    <item
+        android:id="@+id/navigation_exercise3"
+        android:icon="@drawable/ic_exercise3_black_24dp"
+        android:title="@string/title_exercise3" />
+
+</menu>
