@@ -6,9 +6,22 @@ import androidx.lifecycle.ViewModel
 
 class Exercise2ViewModel : ViewModel() {
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is Exercise 2 Fragment"
-    }
-    val text: LiveData<String> = _text
-}
+    private val _nfcMessage = MutableLiveData<String>()
+    val nfcMessage: LiveData<String> = _nfcMessage
 
+    private val _statusMessage = MutableLiveData<String>()
+    val statusMessage: LiveData<String> = _statusMessage
+
+    fun onNfcSearchStarted() {
+        _statusMessage.postValue("Bitte halten Sie ein NFC-Tag an das Gerät …")
+    }
+
+    fun onNfcTagRead(message: String) {
+        _nfcMessage.postValue(message)
+        _statusMessage.postValue("Tag erfolgreich gelesen ✅")
+    }
+
+    fun onNfcError() {
+        _statusMessage.postValue("Fehler beim Lesen des NFC-Tags ❌")
+    }
+}

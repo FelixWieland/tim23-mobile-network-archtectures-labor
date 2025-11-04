@@ -12,27 +12,32 @@ import com.example.mobilenetworkarchitecture.databinding.FragmentExercise2Bindin
 class Exercise2Fragment : Fragment() {
 
     private var _binding: FragmentExercise2Binding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
     private val binding get() = _binding!!
+    private lateinit var exercise2ViewModel: Exercise2ViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val exercise2ViewModel =
-            ViewModelProvider(this).get(Exercise2ViewModel::class.java)
+        exercise2ViewModel =
+            ViewModelProvider(requireActivity()).get(Exercise2ViewModel::class.java)
 
         _binding = FragmentExercise2Binding.inflate(inflater, container, false)
-        val root: View = binding.root
 
-        val textView: TextView = binding.textExercise2
-        exercise2ViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
+        // Beobachte Text (Tag oder Status)
+        exercise2ViewModel.nfcMessage.observe(viewLifecycleOwner) { msg ->
+            binding.textExercise2.text = msg
         }
-        return root
+
+        exercise2ViewModel.statusMessage.observe(viewLifecycleOwner) { status ->
+            binding.textExercise2.text = status
+        }
+
+        // Startstatus
+        exercise2ViewModel.onNfcSearchStarted()
+
+        return binding.root
     }
 
     override fun onDestroyView() {
