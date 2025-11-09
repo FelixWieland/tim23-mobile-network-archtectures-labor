@@ -9,6 +9,11 @@
 
     <!-- Permissions for ConnectivityManager -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Permissions for WiFi -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Permissions and features for NFC -->
     <uses-permission android:name="android.permission.NFC" />

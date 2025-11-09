@@ -3,6 +3,7 @@ package com.example.mobilenetworkarchitecture.ui.exercise1
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -14,15 +15,18 @@ import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import com.example.mobilenetworkarchitecture.R
 import com.example.mobilenetworkarchitecture.databinding.FragmentExercise1Binding
 
 class Exercise1Fragment : Fragment() {
@@ -38,12 +42,7 @@ class Exercise1Fragment : Fragment() {
         if (allGranted) {
             loadTelephonyInfo()
         } else {
-            exercise1ViewModel.updateTelephonyInfo(
-                "⚠️ Permissions required to display telephony information.\n\n" +
-                "Please grant the following permissions:\n" +
-                "- Read Phone State\n" +
-                "- Access Location (for cell info)"
-            )
+            Toast.makeText(requireContext(), "⚠️ Permissions required to display telephony information", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -56,11 +55,6 @@ class Exercise1Fragment : Fragment() {
 
         _binding = FragmentExercise1Binding.inflate(inflater, container, false)
         val root: View = binding.root
-
-        val textView: TextView = binding.textExercise1
-        exercise1ViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
-        }
         
         checkPermissionsAndLoad()
         
@@ -90,148 +84,393 @@ class Exercise1Fragment : Fragment() {
         val telephonyManager = requireContext()
             .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         
-        val info = buildString {
-            append("📱 TELEPHONY INFORMATION\n")
-            append("${"=".repeat(50)}\n\n")
+        // SIM Operator
+        loadSimOperatorInfo(telephonyManager)
+        
+        // Country Information
+        loadCountryInfo(telephonyManager)
+        
+        // Network Type
+        loadNetworkType(telephonyManager)
+        
+        // Cell Information
+        loadCellInfo(telephonyManager)
+        
+        // Connectivity Status
+        loadConnectivityInfo()
+        
+        // Additional Information
+        loadAdditionalInfo(telephonyManager)
+        
+        // Emergency Numbers
+        loadEmergencyNumbers(telephonyManager)
+    }
+    
+    private fun loadSimOperatorInfo(telephonyManager: TelephonyManager) {
+        try {
+            val operatorName = telephonyManager.simOperatorName
+            val operatorCode = telephonyManager.simOperator
             
-            // a. SIM Operator Name
-            append("📡 SIM OPERATOR\n")
-            try {
-                val operatorName = telephonyManager.simOperatorName
-                val operatorCode = telephonyManager.simOperator
-                append("  Name: ${operatorName.ifEmpty { "Not available" }}\n")
-                append("  Code: ${operatorCode.ifEmpty { "Not available" }}\n")
-            } catch (e: SecurityException) {
-                append("  Not available (permission denied)\n")
-            }
-            append("\n")
+            binding.tvOperatorName.text = operatorName.ifEmpty { "Not available" }
+            binding.tvOperatorCode.text = operatorCode.ifEmpty { "Not available" }
+        } catch (e: SecurityException) {
+            binding.tvOperatorName.text = "Permission denied"
+            binding.tvOperatorCode.text = "Permission denied"
+        }
+    }
+    
+    private fun loadCountryInfo(telephonyManager: TelephonyManager) {
+        try {
+            val simCountry = telephonyManager.simCountryIso
+            val networkCountry = telephonyManager.networkCountryIso
             
-            // b. Country Code
-            append("🌍 COUNTRY INFORMATION\n")
-            try {
-                val simCountry = telephonyManager.simCountryIso
-                val networkCountry = telephonyManager.networkCountryIso
-                append("  SIM Country: ${simCountry.uppercase().ifEmpty { "Not available" }}\n")
-                append("  Network Country: ${networkCountry.uppercase().ifEmpty { "Not available" }}\n")
-            } catch (e: SecurityException) {
-                append("  Not available (permission denied)\n")
-            }
-            append("\n")
-            
-            // c. Network Type
-            append("📶 NETWORK TYPE\n")
-            try {
-                val networkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    telephonyManager.dataNetworkType
-                } else {
-                    telephonyManager.networkType
-                }
-                append("  Type: ${getNetworkTypeName(networkType)}\n")
-                append("  Code: $networkType\n")
-            } catch (e: SecurityException) {
-                append("  Not available (permission denied)\n")
-            }
-            append("\n")
-            
-            // d. Cell Information
-            append("📡 CELL INFORMATION\n")
-            try {
-                val allCellInfo = telephonyManager.allCellInfo
-                if (allCellInfo != null && allCellInfo.isNotEmpty()) {
-                    allCellInfo.forEachIndexed { index, cellInfo ->
-                        append("  Cell ${index + 1}:\n")
-                        append(formatCellInfo(cellInfo))
-                        append("\n")
-                    }
-                } else {
-                    append("  No cell information available\n\n")
-                }
-            } catch (e: SecurityException) {
-                append("  Not available (permission denied)\n\n")
+            binding.tvSimCountry.text = simCountry.uppercase().ifEmpty { "Not available" }
+            binding.tvNetworkCountry.text = networkCountry.uppercase().ifEmpty { "Not available" }
+        } catch (e: SecurityException) {
+            binding.tvSimCountry.text = "Permission denied"
+            binding.tvNetworkCountry.text = "Permission denied"
+        }
+    }
+    
+    private fun loadNetworkType(telephonyManager: TelephonyManager) {
+        try {
+            val networkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                telephonyManager.dataNetworkType
+            } else {
+                telephonyManager.networkType
             }
             
-            // e. Emergency Numbers
-            append("🚨 EMERGENCY NUMBERS\n")
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val emergencyNumberMap = telephonyManager.emergencyNumberList
-                    if (emergencyNumberMap != null && emergencyNumberMap.isNotEmpty()) {
-                        val allNumbers = emergencyNumberMap.values.flatten().distinctBy { it.number }
-                        allNumbers.forEachIndexed { index, number ->
-                            append("  ${index + 1}. ${number.number}\n")
-                            append("     Categories: \n")
-                            for (num in number.emergencyServiceCategories) {
-                                append("        - ${getEmergencyCategories(num)}\n")
-                            }
-                            append("     Sources: \n")
-                            for (num in number.emergencyNumberSources) {
-                                append("        - ${getEmergencySources(num)}\n")
-                            }
-
-                        }
-                    } else {
-                        append("  No emergency numbers available\n")
-                    }
-                } else {
-                    append("  Emergency number list requires Android 10+\n")
-                    append("  Default: 112, 911\n")
-                }
-            } catch (e: SecurityException) {
-                append("  Not available (permission denied)\n")
-            } catch (e: Exception) {
-                append("  Error retrieving emergency numbers: ${e.message}\n")
+            binding.tvNetworkType.text = getNetworkTypeName(networkType)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                binding.tvVoiceNetworkType.text = getNetworkTypeName(telephonyManager.voiceNetworkType)
+            } else {
+                binding.tvVoiceNetworkType.text = "Not available"
             }
-            append("\n")
-            
-            // f. Additional Information
-            append("ℹ️ ADDITIONAL INFORMATION\n")
-            try {
-                append("  Phone Type: ${getPhoneTypeName(telephonyManager.phoneType)}\n")
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    append("  Voice Network Type: ${getNetworkTypeName(telephonyManager.voiceNetworkType)}\n")
+        } catch (e: SecurityException) {
+            binding.tvNetworkType.text = "Permission denied"
+            binding.tvVoiceNetworkType.text = "Permission denied"
+        }
+    }
+    
+    private fun loadCellInfo(telephonyManager: TelephonyManager) {
+        binding.containerCellInfo.removeAllViews()
+        
+        try {
+            val allCellInfo = telephonyManager.allCellInfo
+            if (allCellInfo != null && allCellInfo.isNotEmpty()) {
+                allCellInfo.forEachIndexed { index, cellInfo ->
+                    addCellInfoView(cellInfo, index + 1)
                 }
-                
-                val isNetworkRoaming = telephonyManager.isNetworkRoaming
-                append("  Roaming: ${if (isNetworkRoaming) "Yes" else "No"}\n")
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    append("  Data Enabled: ${telephonyManager.isDataEnabled}\n")
-                }
-                
-                // Software version info
-                val softwareVersion = telephonyManager.deviceSoftwareVersion
-                if (softwareVersion != null) {
-                    append("  Device Software Version: $softwareVersion\n")
-                }
-                
-                // SIM state
-                val simState = telephonyManager.simState
-                append("  SIM State: ${getSimStateName(simState)}\n")
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    try {
-                        val signalStrength = telephonyManager.signalStrength
-                        append("  Signal Level: ${signalStrength?.level ?: "N/A"}\n")
-                    } catch (e: Exception) {
-                        append("  Signal Level: Not available\n")
-                    }
-                }
-                
-            } catch (e: SecurityException) {
-                append("  Some information not available (permission denied)\n")
+            } else {
+                addInfoRow(binding.containerCellInfo, "Status", "No cell information available", R.color.text_secondary)
             }
-            
-            append("\n")
-            append("${"=".repeat(50)}\n")
-            append("API Level: ${Build.VERSION.SDK_INT}\n")
-            
-            // Add connectivity information
-            append("\n\n")
-            append(getConnectivityInfo())
+        } catch (e: SecurityException) {
+            addInfoRow(binding.containerCellInfo, "Status", "Permission denied", R.color.accent_red)
+        }
+    }
+    
+    private fun addCellInfoView(cellInfo: CellInfo, cellNumber: Int) {
+        val container = binding.containerCellInfo
+        
+        // Cell header
+        val headerView = TextView(requireContext()).apply {
+            text = "Cell $cellNumber"
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.primary_blue))
+            textSize = 16f
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, if (cellNumber > 1) 16 else 0, 0, 8)
+        }
+        container.addView(headerView)
+        
+        // Registered status
+        val isRegistered = cellInfo.isRegistered
+        addInfoRow(container, "Registered", if (isRegistered) "✓ Yes" else "✗ No", 
+            if (isRegistered) R.color.accent_green else R.color.text_secondary)
+        
+        when {
+            cellInfo is CellInfoLte -> {
+                val identity = cellInfo.cellIdentity
+                val signalStrength = cellInfo.cellSignalStrength
+                addInfoRow(container, "Type", "LTE", R.color.text_primary)
+                addInfoRow(container, "CI", identity.ci.toString(), R.color.text_primary)
+                addInfoRow(container, "PCI", identity.pci.toString(), R.color.text_primary)
+                addInfoRow(container, "TAC", identity.tac.toString(), R.color.text_primary)
+                addSignalStrengthRow(container, signalStrength.dbm, signalStrength.level)
+            }
+            cellInfo is CellInfoGsm -> {
+                val identity = cellInfo.cellIdentity
+                val signalStrength = cellInfo.cellSignalStrength
+                addInfoRow(container, "Type", "GSM", R.color.text_primary)
+                addInfoRow(container, "CID", identity.cid.toString(), R.color.text_primary)
+                addInfoRow(container, "LAC", identity.lac.toString(), R.color.text_primary)
+                addSignalStrengthRow(container, signalStrength.dbm, signalStrength.level)
+            }
+            cellInfo is CellInfoWcdma -> {
+                val identity = cellInfo.cellIdentity
+                val signalStrength = cellInfo.cellSignalStrength
+                addInfoRow(container, "Type", "WCDMA", R.color.text_primary)
+                addInfoRow(container, "CID", identity.cid.toString(), R.color.text_primary)
+                addInfoRow(container, "LAC", identity.lac.toString(), R.color.text_primary)
+                addSignalStrengthRow(container, signalStrength.dbm, signalStrength.level)
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cellInfo is CellInfoNr -> {
+                val identity = cellInfo.cellIdentity as android.telephony.CellIdentityNr
+                val signalStrength = cellInfo.cellSignalStrength as android.telephony.CellSignalStrengthNr
+                addInfoRow(container, "Type", "5G NR", R.color.text_primary)
+                addInfoRow(container, "PCI", identity.pci.toString(), R.color.text_primary)
+                addInfoRow(container, "TAC", identity.tac.toString(), R.color.text_primary)
+                addSignalStrengthRow(container, signalStrength.dbm, signalStrength.level)
+            }
+            else -> {
+                addInfoRow(container, "Type", "Other (${cellInfo.javaClass.simpleName})", R.color.text_primary)
+            }
+        }
+    }
+    
+    private fun addSignalStrengthRow(container: LinearLayout, dbm: Int, level: Int) {
+        val signalQuality = when (level) {
+            4 -> "Excellent"
+            3 -> "Good"
+            2 -> "Fair"
+            1 -> "Poor"
+            else -> "Very Poor"
         }
         
-        exercise1ViewModel.updateTelephonyInfo(info)
+        val color = when (level) {
+            4, 3 -> R.color.accent_green
+            2 -> R.color.accent_orange
+            else -> R.color.accent_red
+        }
+        
+        addInfoRow(container, "Signal Strength", "$dbm dBm", R.color.text_primary)
+        addInfoRow(container, "Signal Quality", "$signalQuality (Level $level)", color)
+    }
+    
+    private fun loadConnectivityInfo() {
+        binding.containerConnectivity.removeAllViews()
+        
+        try {
+            val connectivityManager = requireContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val activeNetwork = connectivityManager.activeNetwork
+                val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+                
+                if (activeNetwork != null && capabilities != null) {
+                    // Transport types
+                    addConnectionStatus("Wi-Fi", capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+                    addConnectionStatus("Cellular", capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))
+                    addConnectionStatus("Ethernet", capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
+                    addConnectionStatus("VPN", capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN))
+                    
+                    // Roaming
+                    val isRoaming = !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+                    addInfoRow(binding.containerConnectivity, "Roaming", 
+                        if (isRoaming) "Yes ⚠️" else "No", 
+                        if (isRoaming) R.color.accent_orange else R.color.accent_green)
+                    
+                    // Metered
+                    val isMetered = !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                    addInfoRow(binding.containerConnectivity, "Metered", 
+                        if (isMetered) "Yes" else "No", 
+                        if (isMetered) R.color.accent_orange else R.color.accent_green)
+                    
+                    // Bandwidth
+                    val downstreamBandwidth = capabilities.linkDownstreamBandwidthKbps
+                    if (downstreamBandwidth > 0) {
+                        addInfoRow(binding.containerConnectivity, "⬇️ Downstream", 
+                            formatBandwidth(downstreamBandwidth), R.color.text_primary)
+                    }
+                    
+                    val upstreamBandwidth = capabilities.linkUpstreamBandwidthKbps
+                    if (upstreamBandwidth > 0) {
+                        addInfoRow(binding.containerConnectivity, "⬆️ Upstream", 
+                            formatBandwidth(upstreamBandwidth), R.color.text_primary)
+                    }
+                    
+                    // Capabilities
+                    addInfoRow(binding.containerConnectivity, "Internet", 
+                        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) "✓" else "✗",
+                        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) R.color.accent_green else R.color.text_secondary)
+                    
+                    addInfoRow(binding.containerConnectivity, "Validated", 
+                        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) "✓" else "✗",
+                        if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) R.color.accent_green else R.color.text_secondary)
+                    
+                    // Signal strength
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val signalStrength = capabilities.signalStrength
+                        if (signalStrength != Int.MIN_VALUE) {
+                            val quality = when {
+                                signalStrength >= -50 -> "Excellent"
+                                signalStrength >= -60 -> "Good"
+                                signalStrength >= -70 -> "Fair"
+                                signalStrength >= -80 -> "Weak"
+                                else -> "Very Weak"
+                            }
+                            addInfoRow(binding.containerConnectivity, "Signal", 
+                                "$signalStrength dBm ($quality)", R.color.text_primary)
+                        }
+                    }
+                } else {
+                    addInfoRow(binding.containerConnectivity, "Status", "No active network", R.color.accent_red)
+                }
+            } else {
+                addInfoRow(binding.containerConnectivity, "Status", "Requires Android 6.0+", R.color.text_secondary)
+            }
+        } catch (e: Exception) {
+            addInfoRow(binding.containerConnectivity, "Error", e.message ?: "Unknown error", R.color.accent_red)
+        }
+    }
+    
+    private fun addConnectionStatus(name: String, isConnected: Boolean) {
+        addInfoRow(binding.containerConnectivity, name, 
+            if (isConnected) "✓ Connected" else "✗ Not Connected",
+            if (isConnected) R.color.accent_green else R.color.text_secondary)
+    }
+    
+    private fun loadAdditionalInfo(telephonyManager: TelephonyManager) {
+        binding.containerAdditionalInfo.removeAllViews()
+        
+        try {
+            // Phone Type
+            addInfoRow(binding.containerAdditionalInfo, "Phone Type", 
+                getPhoneTypeName(telephonyManager.phoneType), R.color.text_primary)
+            
+            // Roaming
+            val isNetworkRoaming = telephonyManager.isNetworkRoaming
+            addInfoRow(binding.containerAdditionalInfo, "Roaming", 
+                if (isNetworkRoaming) "Yes ⚠️" else "No",
+                if (isNetworkRoaming) R.color.accent_orange else R.color.accent_green)
+            
+            // Data Enabled
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                addInfoRow(binding.containerAdditionalInfo, "Data Enabled", 
+                    if (telephonyManager.isDataEnabled) "Yes" else "No",
+                    if (telephonyManager.isDataEnabled) R.color.accent_green else R.color.text_secondary)
+            }
+            
+            // SIM State
+            val simState = telephonyManager.simState
+            val simStateName = getSimStateName(simState)
+            val simStateColor = if (simState == TelephonyManager.SIM_STATE_READY) R.color.accent_green else R.color.accent_orange
+            addInfoRow(binding.containerAdditionalInfo, "SIM State", simStateName, simStateColor)
+            
+            // Signal Level
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    val signalStrength = telephonyManager.signalStrength
+                    addInfoRow(binding.containerAdditionalInfo, "Signal Level", 
+                        signalStrength?.level?.toString() ?: "N/A", R.color.text_primary)
+                } catch (e: Exception) {
+                    addInfoRow(binding.containerAdditionalInfo, "Signal Level", "Not available", R.color.text_secondary)
+                }
+            }
+            
+            // API Level
+            addInfoRow(binding.containerAdditionalInfo, "API Level", Build.VERSION.SDK_INT.toString(), R.color.text_primary)
+            
+        } catch (e: SecurityException) {
+            addInfoRow(binding.containerAdditionalInfo, "Status", "Permission denied", R.color.accent_red)
+        }
+    }
+    
+    private fun loadEmergencyNumbers(telephonyManager: TelephonyManager) {
+        binding.containerEmergencyNumbers.removeAllViews()
+        
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val emergencyNumberMap = telephonyManager.emergencyNumberList
+                if (emergencyNumberMap != null && emergencyNumberMap.isNotEmpty()) {
+                    val allNumbers = emergencyNumberMap.values.flatten().distinctBy { it.number }
+                    
+                    allNumbers.forEach { number ->
+                        val categories = number.emergencyServiceCategories.joinToString(", ") { 
+                            getEmergencyCategoryName(it) 
+                        }
+                        addEmergencyNumber(number.number, categories)
+                    }
+                } else {
+                    addInfoRow(binding.containerEmergencyNumbers, "Status", 
+                        "No emergency numbers available", R.color.text_secondary)
+                }
+            } else {
+                addInfoRow(binding.containerEmergencyNumbers, "Default Numbers", 
+                    "112, 911", R.color.text_primary)
+                addInfoRow(binding.containerEmergencyNumbers, "Note", 
+                    "Emergency number list requires Android 10+", R.color.text_secondary)
+            }
+        } catch (e: SecurityException) {
+            addInfoRow(binding.containerEmergencyNumbers, "Status", "Permission denied", R.color.accent_red)
+        } catch (e: Exception) {
+            addInfoRow(binding.containerEmergencyNumbers, "Error", e.message ?: "Unknown error", R.color.accent_red)
+        }
+    }
+    
+    private fun addEmergencyNumber(number: String, categories: String) {
+        val numberView = TextView(requireContext()).apply {
+            text = "📞 $number"
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.accent_red))
+            textSize = 16f
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 8, 0, 4)
+        }
+        binding.containerEmergencyNumbers.addView(numberView)
+        
+        val categoryView = TextView(requireContext()).apply {
+            text = "   $categories"
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
+            textSize = 14f
+            setPadding(0, 0, 0, 12)
+        }
+        binding.containerEmergencyNumbers.addView(categoryView)
+    }
+    
+    private fun getEmergencyCategoryName(category: Int): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "N/A"
+        
+        return when (category) {
+            1 -> "Police"
+            2 -> "Ambulance"
+            4 -> "Fire Brigade"
+            8 -> "Marine Guard"
+            16 -> "Mountain Rescue"
+            else -> "Unspecified"
+        }
+    }
+    
+    private fun addInfoRow(container: LinearLayout, label: String, value: String, valueColorRes: Int) {
+        val rowLayout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 8
+            }
+        }
+        
+        val labelView = TextView(requireContext()).apply {
+            text = label
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
+            textSize = 14f
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        
+        val valueView = TextView(requireContext()).apply {
+            text = value
+            setTextColor(ContextCompat.getColor(requireContext(), valueColorRes))
+            textSize = 14f
+            setTypeface(null, Typeface.BOLD)
+            gravity = Gravity.END
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        
+        rowLayout.addView(labelView)
+        rowLayout.addView(valueView)
+        container.addView(rowLayout)
     }
     
     private fun getNetworkTypeName(type: Int): String {
@@ -286,227 +525,6 @@ class Exercise1Fragment : Fragment() {
         }
     }
     
-    private fun formatCellInfo(cellInfo: CellInfo): String {
-        return buildString {
-            append("    Registered: ${cellInfo.isRegistered}\n")
-            
-            when {
-                cellInfo is CellInfoLte -> {
-                    append("    Type: LTE\n")
-                    val identity = cellInfo.cellIdentity
-                    val signalStrength = cellInfo.cellSignalStrength
-                    append("    CI: ${identity.ci}\n")
-                    append("    PCI: ${identity.pci}\n")
-                    append("    TAC: ${identity.tac}\n")
-                    append("    Signal Strength: ${signalStrength.dbm} dBm\n")
-                    append("    Signal Level: ${signalStrength.level}\n")
-                }
-                cellInfo is CellInfoGsm -> {
-                    append("    Type: GSM\n")
-                    val identity = cellInfo.cellIdentity
-                    val signalStrength = cellInfo.cellSignalStrength
-                    append("    CID: ${identity.cid}\n")
-                    append("    LAC: ${identity.lac}\n")
-                    append("    Signal Strength: ${signalStrength.dbm} dBm\n")
-                    append("    Signal Level: ${signalStrength.level}\n")
-                }
-                cellInfo is CellInfoWcdma -> {
-                    append("    Type: WCDMA\n")
-                    val identity = cellInfo.cellIdentity
-                    val signalStrength = cellInfo.cellSignalStrength
-                    append("    CID: ${identity.cid}\n")
-                    append("    LAC: ${identity.lac}\n")
-                    append("    Signal Strength: ${signalStrength.dbm} dBm\n")
-                    append("    Signal Level: ${signalStrength.level}\n")
-                }
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && cellInfo is CellInfoNr -> {
-                    append("    Type: 5G NR\n")
-                    val identity = cellInfo.cellIdentity as android.telephony.CellIdentityNr
-                    val signalStrength = cellInfo.cellSignalStrength as android.telephony.CellSignalStrengthNr
-                    append("    PCI: ${identity.pci}\n")
-                    append("    TAC: ${identity.tac}\n")
-                    append("    Signal Strength: ${signalStrength.dbm} dBm\n")
-                    append("    Signal Level: ${signalStrength.level}\n")
-                }
-                else -> {
-                    append("    Type: Other (${cellInfo.javaClass.simpleName})\n")
-                }
-            }
-        }
-    }
-    
-    private fun getConnectivityInfo(): String {
-        return buildString {
-            append("🌐 NETWORK CONNECTIVITY INFORMATION\n")
-            append("${"=".repeat(50)}\n\n")
-            
-            try {
-                val connectivityManager = requireContext()
-                    .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    // a. Connectivity state of different network types
-                    append("📡 CONNECTIVITY STATE\n")
-                    val activeNetwork = connectivityManager.activeNetwork
-                    val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-                    
-                    if (activeNetwork != null && capabilities != null) {
-                        append("  Active Network: Yes\n")
-                        
-                        // Check each transport type
-                        append("  • Wi-Fi: ${if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) "✓ Connected" else "✗ Not Connected"}\n")
-                        append("  • Cellular: ${if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) "✓ Connected" else "✗ Not Connected"}\n")
-                        append("  • Bluetooth: ${if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)) "✓ Connected" else "✗ Not Connected"}\n")
-                        append("  • Ethernet: ${if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) "✓ Connected" else "✗ Not Connected"}\n")
-                        append("  • VPN: ${if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) "✓ Connected" else "✗ Not Connected"}\n")
-                        
-                        // Satellite support (API 31+)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            val hasSatellite = try {
-                                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)
-                            } catch (e: Exception) {
-                                false
-                            }
-                            append("  • Satellite: ${if (hasSatellite) "✓ Connected" else "✗ Not Connected"}\n")
-                        } else {
-                            append("  • Satellite: Not available (requires Android 12+)\n")
-                        }
-                        
-                        append("\n")
-                        
-                        // b. Roaming
-                        append("🌍 ROAMING STATUS\n")
-                        val isRoaming = !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
-                        append("  Roaming: ${if (isRoaming) "Yes ⚠️" else "No"}\n")
-                        append("\n")
-                        
-                        // c. Metered
-                        append("💰 METERED STATUS\n")
-                        val isMetered = !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
-                        append("  Metered: ${if (isMetered) "Yes (data charges may apply)" else "No (free data)"}\n")
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            val isTemporarilyNotMetered = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_TEMPORARILY_NOT_METERED)
-                            append("  Temporarily Not Metered: ${if (isTemporarilyNotMetered) "Yes" else "No"}\n")
-                        }
-                        append("\n")
-                        
-                        // d. Downstream bandwidth
-                        append("⬇️ DOWNSTREAM BANDWIDTH\n")
-                        val downstreamBandwidth = capabilities.linkDownstreamBandwidthKbps
-                        if (downstreamBandwidth > 0) {
-                            append("  ${formatBandwidth(downstreamBandwidth)}\n")
-                        } else {
-                            append("  Not available\n")
-                        }
-                        append("\n")
-                        
-                        // e. Upstream bandwidth
-                        append("⬆️ UPSTREAM BANDWIDTH\n")
-                        val upstreamBandwidth = capabilities.linkUpstreamBandwidthKbps
-                        if (upstreamBandwidth > 0) {
-                            append("  ${formatBandwidth(upstreamBandwidth)}\n")
-                        } else {
-                            append("  Not available\n")
-                        }
-                        append("\n")
-                        
-                        // f. Additional data (1: Network capabilities)
-                        append("✨ NETWORK CAPABILITIES\n")
-                        append("  Internet: ${if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) "✓" else "✗"}\n")
-                        append("  Validated: ${if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) "✓" else "✗"}\n")
-                        append("  Captive Portal: ${if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL)) "Yes ⚠️" else "No"}\n")
-                        
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            append("  Not Suspended: ${if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)) "✓" else "✗"}\n")
-                            append("  Not VPN: ${if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) "✓" else "✗"}\n")
-                        }
-                        
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            append("  Not Congested: ${if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_CONGESTED)) "✓" else "✗"}\n")
-                        }
-                        
-                        append("\n")
-                        
-                        // f. Additional data (2: Signal strength)
-                        append("📶 SIGNAL STRENGTH\n")
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val signalStrength = capabilities.signalStrength
-                            if (signalStrength != Int.MIN_VALUE) {
-                                append("  Signal Strength: $signalStrength dBm\n")
-                                val quality = when {
-                                    signalStrength >= -50 -> "Excellent"
-                                    signalStrength >= -60 -> "Good"
-                                    signalStrength >= -70 -> "Fair"
-                                    signalStrength >= -80 -> "Weak"
-                                    else -> "Very Weak"
-                                }
-                                append("  Quality: $quality\n")
-                            } else {
-                                append("  Not available\n")
-                            }
-                        } else {
-                            append("  Signal strength requires Android 10+\n")
-                        }
-                        append("\n")
-                        
-                        // All available networks
-                        append("🔗 ALL AVAILABLE NETWORKS\n")
-                        val allNetworks = connectivityManager.allNetworks
-                        if (allNetworks.isNotEmpty()) {
-                            allNetworks.forEachIndexed { index, network ->
-                                val netCapabilities = connectivityManager.getNetworkCapabilities(network)
-                                if (netCapabilities != null) {
-                                    append("  Network ${index + 1}:\n")
-                                    val transports = mutableListOf<String>()
-                                    if (netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) transports.add("Wi-Fi")
-                                    if (netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) transports.add("Cellular")
-                                    if (netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)) transports.add("Bluetooth")
-                                    if (netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) transports.add("Ethernet")
-                                    if (netCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) transports.add("VPN")
-                                    
-                                    append("    Type: ${transports.joinToString(", ").ifEmpty { "Unknown" }}\n")
-                                    append("    Internet: ${if (netCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) "Yes" else "No"}\n")
-                                }
-                            }
-                        } else {
-                            append("  No networks available\n")
-                        }
-                        
-                    } else {
-                        append("  No active network connection\n")
-                        append("\n")
-                        append("  • Wi-Fi: ✗ Not Connected\n")
-                        append("  • Cellular: ✗ Not Connected\n")
-                        append("  • Bluetooth: ✗ Not Connected\n")
-                        append("  • Satellite: ✗ Not Connected\n")
-                    }
-                } else {
-                    // Fallback for API < 23
-                    append("  Connectivity Manager API level too low\n")
-                    append("  Requires Android 6.0+ (API 23)\n")
-                    
-                    // Try legacy method
-                    @Suppress("DEPRECATION")
-                    val activeNetworkInfo = connectivityManager.activeNetworkInfo
-                    if (activeNetworkInfo != null) {
-                        append("\n📱 LEGACY NETWORK INFO\n")
-                        append("  Connected: ${activeNetworkInfo.isConnected}\n")
-                        append("  Type: ${activeNetworkInfo.typeName}\n")
-                        append("  Subtype: ${activeNetworkInfo.subtypeName}\n")
-                        append("  Roaming: ${activeNetworkInfo.isRoaming}\n")
-                    }
-                }
-                
-            } catch (e: Exception) {
-                append("Error retrieving connectivity information:\n")
-                append("${e.message}\n")
-            }
-            
-            append("\n")
-            append("${"=".repeat(50)}\n")
-        }
-    }
-    
     private fun formatBandwidth(kbps: Int): String {
         return when {
             kbps >= 1_000_000 -> String.format("%.2f Gbps", kbps / 1_000_000.0)
@@ -515,38 +533,8 @@ class Exercise1Fragment : Fragment() {
         }
     }
     
-    private fun getEmergencyCategories(categories: Int): String {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "N/A"
-        
-        val categoryList = mutableListOf<String>()
-        val emergencyNumberClass = android.telephony.emergency.EmergencyNumber::class.java
-        
-        if (categories and 1 != 0) categoryList.add("Police")
-        if (categories and 2 != 0) categoryList.add("Ambulance")
-        if (categories and 4 != 0) categoryList.add("Fire Brigade")
-        if (categories and 8 != 0) categoryList.add("Marine Guard")
-        if (categories and 16 != 0) categoryList.add("Mountain Rescue")
-        
-        return if (categoryList.isEmpty()) "Unspecified" else categoryList.joinToString(", ")
-    }
-    
-    private fun getEmergencySources(sources: Int): String {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return "N/A"
-        
-        val sourceList = mutableListOf<String>()
-        
-        if (sources and 1 != 0) sourceList.add("Network")
-        if (sources and 2 != 0) sourceList.add("SIM")
-        if (sources and 4 != 0) sourceList.add("Database")
-        if (sources and 8 != 0) sourceList.add("MODEM_CONFIG")
-        if (sources and 16 != 0) sourceList.add("Default")
-        
-        return if (sourceList.isEmpty()) "Unknown" else sourceList.joinToString(", ")
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
 }
-

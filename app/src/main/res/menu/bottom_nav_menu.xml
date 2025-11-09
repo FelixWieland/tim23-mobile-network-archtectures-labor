@@ -16,4 +16,9 @@
         android:icon="@drawable/ic_exercise3_black_24dp"
         android:title="@string/title_exercise3" />
 
+    <item
+        android:id="@+id/navigation_exercise3optional"
+        android:icon="@drawable/ic_wlan_chat_black_24dp"
+        android:title="@string/title_wlan_chat" />
+
 </menu>

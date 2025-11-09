@@ -7,4 +7,28 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    
+    <!-- Modern color palette for network info -->
+    <color name="primary_blue">#1E88E5</color>
+    <color name="primary_blue_dark">#1565C0</color>
+    <color name="primary_blue_light">#E3F2FD</color>
+    
+    <color name="accent_green">#43A047</color>
+    <color name="accent_green_light">#E8F5E9</color>
+    
+    <color name="accent_orange">#FB8C00</color>
+    <color name="accent_orange_light">#FFF3E0</color>
+    
+    <color name="accent_red">#E53935</color>
+    <color name="accent_red_light">#FFEBEE</color>
+    
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_background_dark">#1E1E1E</color>
+    
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_hint">#BDBDBD</color>
+    
+    <color name="divider">#E0E0E0</color>
+    <color name="background_light">#F5F5F5</color>
 </resources>

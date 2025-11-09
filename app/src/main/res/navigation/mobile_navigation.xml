@@ -22,4 +22,10 @@
         android:name="com.example.mobilenetworkarchitecture.ui.exercise3.Exercise3Fragment"
         android:label="@string/title_exercise3"
         tools:layout="@layout/fragment_exercise3" />
+
+    <fragment
+        android:id="@+id/navigation_exercise3optional"
+        android:name="com.example.mobilenetworkarchitecture.ui.exercise3optional.Exercise3OptionalFragment"
+        android:label="@string/title_wlan_chat"
+        tools:layout="@layout/fragment_exercise3optional" />
 </navigation>
