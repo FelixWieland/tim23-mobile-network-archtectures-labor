@@ -18,7 +18,7 @@ class Exercise2ViewModel : ViewModel() {
 
     fun onNfcTagRead(message: String) {
         _nfcMessage.postValue(message)
-        _statusMessage.postValue("Tag erfolgreich gelesen ✅")
+        _statusMessage.postValue(message)
     }
 
     fun onNfcError() {

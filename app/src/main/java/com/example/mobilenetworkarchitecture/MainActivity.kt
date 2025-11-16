@@ -44,6 +44,16 @@ class MainActivity : AppCompatActivity() {
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
+        nfcAdapter?.enableReaderMode(
+            this,
+            { tag -> handleTag(tag) },
+            NfcAdapter.FLAG_READER_NFC_A or
+                    NfcAdapter.FLAG_READER_NFC_B or
+                    NfcAdapter.FLAG_READER_NFC_F or
+                    NfcAdapter.FLAG_READER_NFC_V,
+            null
+        )
+
         pendingIntent = PendingIntent.getActivity(
             this,
             0,
@@ -55,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         nfcAdapter?.disableForegroundDispatch(this)
+
     }
 
     override fun onResume() {
@@ -62,6 +73,48 @@ class MainActivity : AppCompatActivity() {
         nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
         exercise2ViewModel.onNfcSearchStarted()
     }
+
+    private fun handleTag(tag: Tag) {
+        try {
+            // 1) Tag UID (Hex) immer auslesen
+            val uid = tag.id.joinToString("") { "%02X".format(it) }
+
+            // 2) Tag-Typ bestimmen (IsoDep, MifareClassic etc.)
+            val techList = tag.techList.joinToString()
+
+            // 3) Versuchen, NDEF zu lesen
+            val ndef = Ndef.get(tag)
+            var message: String? = null
+
+            if (ndef != null) {
+                try {
+                    ndef.connect()
+
+                    message = ndef.ndefMessage
+                        ?.records
+                        ?.joinToString("\n") { it.payload.decodeToString() }
+                        ?: "Leere NDEF Nachricht"
+
+                    ndef.close()
+                } catch (e: Exception) {
+                    // NDEF vorhanden, aber nicht lesbar → ignorieren
+                }
+            }
+
+            // 4) Wenn keine NDEF-Nachricht, dann UID + Typ zurückgeben
+            if (message == null) {
+                message = "Kein NDEF verfügbar\nUID: $uid\nTech: $techList"
+            }
+
+            // 5) An ViewModel geben
+            exercise2ViewModel.onNfcTagRead(message)
+
+        } catch (e: Exception) {
+            exercise2ViewModel.onNfcError()
+        }
+    }
+
+
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
